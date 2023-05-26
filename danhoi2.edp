@@ -1,0 +1,90 @@
+
+// Parameters
+real nu1 = 0.33; //Al
+real E1 = 0.69e5;
+real mu1 = E1/(2*(1+nu1));
+real lambda1 = E1*nu1/((1+nu1)*(1-2*nu1));
+real nu2 = 0.291; //Steel
+real E2 = 0.2e6;
+real mu2 = E2/(2*(1+nu2));
+real lambda2 = E2*nu2/((1+nu2)*(1-2*nu2));
+real gravity = -10;
+real fx = -1000 ;
+
+real a1 = 0.5;
+real b1 = 0.8;
+  border a(t= 0, 1){x=t; y=0; }
+ border b(t=0,8){x=1; y=t; }
+ border c(t=1,3){ x=t; y=8; }
+ border d(t=3,4){ x=t; y=8; }
+ border e(t=4,6){ x=t; y=8; }
+ border f(t=6,7){ x=t; y=8; }
+ border g(t=7,9){ x=t; y=8; }
+ border h(t=9,10){ x=t; y=8; }
+ border m(t=10,12){ x=t; y=8; }
+ border n(t=8,0){ x=12; y=t; }
+ border p(t=12,13){ x=t; y=0; }
+ border q(t=0,9){ x=13; y=t; }
+ border r(t=13, 0){ x=t; y=9; }
+ border s(t=9,0){ x=0; y=t; }
+ border v(t=10,9){x=0;y=t;}
+ border j(t=9,10){x=13;y=t;}
+ border z(t=13,0){x=t;y=10;}
+
+ mesh th = buildmesh(a(10) + b(80) + c(20) + d(20) + e(20) + f(20) + g(20) + h(20)
+		+m(20) + n(80) + p(10) + q(90) + r(130) + s(90)+v(10)+j(10)+z(80));
+ // Fespace
+plot(th, wait= true);
+fespace Vh(th, P2);
+
+ Vh u1, u2;
+
+ Vh v1, v2;
+ Vh reg = region;
+ Vh mu, lambda;
+ Vh E;
+//fespace Vh(c, P1);
+
+ // Macro
+ real sqrt2 = sqrt(2.);
+ macro epsilon(u1, u2) [dx(u1), dy(u2), (dy(u1)+dx(u2))/sqrt2] //
+ macro div(u,v) (dx(u) + dy(v)) //
+ 
+ int ntop = reg(6,8.5);
+ int nbottom = reg(6,9.5);
+
+ E = E1*(region == ntop)+E2*(region==nbottom);
+ mu = mu1*(region == ntop)+mu2*(region==nbottom);
+ lambda = lambda1*(region == ntop)+lambda2*(region==nbottom);
+
+plot ( E ,wait=true,fill = true);
+ // Problem
+ solve Elasticity ([u1, u2], [v1, v2])
+     = int2d(th)(
+           lambda*div(v1, v2)*div(u1,u2)
+         + 2.*mu*( epsilon(v1, v2)'*epsilon(u1,u2) )
+     )
+     + int2d(th)(
+         - gravity*v2
+     )
+ 	+ int1d(th, d)( - fx*v2 )
+	+ int1d(th, f)( - fx*v2 )
+	+ int1d(th, h)( - fx*v2 )
+     + on(a, p, u1=0, u2=0)
+ ; 
+// Plot
+real coef=1;
+//plot([u1, u2], wait=1, coef=coef);
+ 
+// Move mesh
+mesh th1 = movemesh(th, [x+u1*coef, y+u2*coef]);
+fespace Sh ( th1, P1);
+Sh reg1 = region;
+Sh E0;
+ 
+
+E0 =E1*(region == ntop)+E2*(region==nbottom);
+plot(E0,wait=1,fill = true);
+
+
+
